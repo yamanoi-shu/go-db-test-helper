@@ -30,3 +30,12 @@ func NewTDHandlerGorm(db *gorm.DB) (*TDHandler, error) {
 
 	return &TDHandler{sqlDB}, nil
 }
+
+func (td *TDHandler) CleanUp(tableName string) (int64, error) {
+	result, err := td.db.Exec("TRUNCATE table ?", tableName)
+	if err != nil {
+		return 0, err
+	}
+
+	return result.RowsAffected()
+}
