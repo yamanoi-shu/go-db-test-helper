@@ -10,28 +10,36 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"gorm.io/gorm"
 )
 
 type TDHandler struct {
-	db *sql.DB
+	db     *sql.DB
+	dbNum  int
+	unlock func() error
 }
 
-func NewTDHandler(db *sql.DB) (*TDHandler, error) {
+func NewTDHandler() {
+	db, unlock, err := connectDB(*sql.DB, func() error, error)
+	return *TDHandler{
+		db:     db,
+		unlock: unlock,
+	}
 }
 
-func NewTDHandlerGorm(db *gorm.DB) (*TDHandler, error) {
-	sqlDB, err := db.DB()
+func (h *TDHandler) GetDB() *sql.DB {
+	return h.db
+}
 
-	if err != nil {
-		return nil, DBConnectionErr
-	}
-
-	if sqlDB.Ping() != nil {
-		return nil, DBConnectionErr
-	}
-
-	return &TDHandler{sqlDB}, nil
+func (h *TDHandler) Close() {
+	h.db.Close()
+	dbName := fmt.Sprintf("test_db_%d", h.dbNum)
+	wd, _ := os.Getwd()
+	scriptPath := filepath.Join(wd, "/scripts/clean_database.sh")
+	cmd := os.Command("chmod", "+x", scriptPath)
+	cmd.Run()
+	cmd = os.Command(scriptPath, dbName)
+	cmd.Run()
+	h.unlock()
 }
 
 func connectDB() (*sql.DB, func() error, error) {
