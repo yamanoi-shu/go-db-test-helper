@@ -6,11 +6,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"time"
 
 	"github.com/gofrs/flock"
 )
+
+const RUN_SQL_SCRIPT_PATH = "scripts/run_sql.sh"
 
 type TDHandler struct {
 	db     *sql.DB
@@ -114,10 +117,14 @@ func lockFile(i int) (func() error, error) {
 }
 
 func (td *TDHandler) CleanUp(tableName string) (int64, error) {
-	result, err := td.db.Exec("TRUNCATE table ?", tableName)
-	if err != nil {
-		return 0, err
-	}
+	dbName := fmt.Sprintf("test_db_%s", tableName)
+	sql := "DROP DATABASE IF EXISTS %s; CREATE DATABASE IF NOT EXISTS %s"
+	sql = fmt.Sprintf(sql, dbName)
 
-	return result.RowsAffected()
+}
+
+func runSQL(tableName, sql string) error {
+	cmd := exec.Command("chmod", "+x", RUN_SQL_SCRIPT_PATH)
+	cmd.Run()
+	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, tableName, sql)
 }
