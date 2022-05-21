@@ -57,7 +57,6 @@ func connectDB() (*sql.DB, func() error, error) {
 
 	var dbCh = make(chan *sql.DB, 1)
 	var unlockCh = make(chan func() error, 1)
-	var errCh = make(chan error, 1)
 
 	dns := "root:password@tcp(localhost:3307)/test_db_%d"
 	dnsOpts := "?charset=utf8mb4&parseTime=true"
@@ -78,7 +77,8 @@ func connectDB() (*sql.DB, func() error, error) {
 
 				db, err := sql.Open("mysql", dns)
 				if err != nil {
-					errCh <- err
+					unlock()
+					continue
 				}
 
 				dbCh <- db
@@ -89,8 +89,6 @@ func connectDB() (*sql.DB, func() error, error) {
 
 	select {
 	case db = <-dbCh:
-	case err = <-errCh:
-		return nil, nil, err
 	case <-time.After(time.Second * 30):
 		err := errors.New("time out 30s")
 		return nil, nil, err
