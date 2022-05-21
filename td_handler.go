@@ -15,6 +15,11 @@ import (
 
 const RUN_SQL_SCRIPT_PATH = "scripts/run_sql.sh"
 
+func init() {
+	cmd := exec.Command("chmod", "+x", RUN_SQL_SCRIPT_PATH)
+	cmd.Run()
+}
+
 type TDHandler struct {
 	db     *sql.DB
 	dbNum  int
@@ -124,7 +129,5 @@ func (td *TDHandler) CleanUp(tableName string) (int64, error) {
 }
 
 func runSQL(tableName, sql string) error {
-	cmd := exec.Command("chmod", "+x", RUN_SQL_SCRIPT_PATH)
-	cmd.Run()
 	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, tableName, sql)
 }
