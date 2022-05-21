@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -119,13 +120,25 @@ func lockFile(i int) (func() error, error) {
 	}, nil
 }
 
-func (td *TDHandler) CleanUp(tableName string) (int64, error) {
-	dbName := fmt.Sprintf("test_db_%s", tableName)
+func (td *TDHandler) CleanUp() (int64, error) {
+	dbName := fmt.Sprintf("test_db_%d", td.dbNum)
 	sql := "DROP DATABASE IF EXISTS %s; CREATE DATABASE IF NOT EXISTS %s"
 	sql = fmt.Sprintf(sql, dbName)
 
 }
 
-func runSQL(tableName, sql string) error {
-	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, tableName, sql)
+func (td *TDHandler) CreateTable(tableName string) error {
+	wk, _ := os.Getwd()
+	migrationFile := fmt.Sprintf("migration/create_table/%s.sql", tableName)
+	migrationFile = filepath.Join(wk, migrationFile)
+	sqlBytes, err := ioutil.ReadFile(migrationFile)
+	if err != nil {
+		return err
+	}
+	err := runSQL(td.dbName, string(sqlBytes))
+	return err
+}
+
+func runSQL(dbName, sql string) error {
+	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, dbName, sql)
 }
