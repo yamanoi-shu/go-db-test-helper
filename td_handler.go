@@ -39,6 +39,10 @@ func (h *TDHandler) GetDB() *sql.DB {
 	return h.db
 }
 
+func (h *TDHandler) GetDBName() string {
+	return h.dbName
+}
+
 func (h *TDHandler) Close() {
 	h.db.Close()
 	dbName := fmt.Sprintf("test_db_%d", h.dbNum)
