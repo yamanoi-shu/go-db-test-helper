@@ -23,42 +23,42 @@ func init() {
 
 type TDHandler struct {
 	db     *sql.DB
-	dbNum  int
+	dbName string
 	unlock func() error
 }
 
-func NewTDHandler() {
-	db, unlock, err := connectDB(*sql.DB, func() error, error)
-	return *TDHandler{
+func NewTDHandler() (*TDHandler, error) {
+	db, unlock, err := connectDB()
+	if err != nil {
+		return nil, err
+	}
+	return &TDHandler{
 		db:     db,
 		unlock: unlock,
-	}
+	}, nil
 }
 
 func (h *TDHandler) GetDB() *sql.DB {
 	return h.db
 }
 
-func (h *TDHandler) GetDBName() string {
+func (h *TDHandler) GetDBNum() string {
 	return h.dbName
 }
 
 func (h *TDHandler) Close() {
 	h.db.Close()
-	dbName := fmt.Sprintf("test_db_%d", h.dbNum)
 	wd, _ := os.Getwd()
 	scriptPath := filepath.Join(wd, "/scripts/clean_database.sh")
-	cmd := os.Command("chmod", "+x", scriptPath)
+	cmd := exec.Command("chmod", "+x", scriptPath)
 	cmd.Run()
-	cmd = os.Command(scriptPath, dbName)
+	cmd = exec.Command(scriptPath, h.dbName)
 	cmd.Run()
 	h.unlock()
 }
 
 func connectDB() (*sql.DB, func() error, error) {
 	var db *sql.DB
-	var unlock func() error
-	var err error
 
 	var dbCh = make(chan *sql.DB, 1)
 	var unlockCh = make(chan func() error, 1)
@@ -119,16 +119,16 @@ func lockFile(i int) (func() error, error) {
 		return nil, err
 	}
 
-	return func() {
+	return func() error {
 		return fileLock.Unlock()
 	}, nil
 }
 
-func (td *TDHandler) CleanUp() (int64, error) {
-	dbName := fmt.Sprintf("test_db_%d", td.dbNum)
+func (td *TDHandler) CleanUp() error {
 	sql := "DROP DATABASE IF EXISTS %s; CREATE DATABASE IF NOT EXISTS %s"
-	sql = fmt.Sprintf(sql, dbName)
-
+	sql = fmt.Sprintf(sql, td.dbName)
+	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, sql)
+	return cmd.Run()
 }
 
 func (td *TDHandler) CreateTable(tableName string) error {
@@ -139,10 +139,11 @@ func (td *TDHandler) CreateTable(tableName string) error {
 	if err != nil {
 		return err
 	}
-	err := runSQL(td.dbName, string(sqlBytes))
+	err = runSQL(td.dbName, string(sqlBytes))
 	return err
 }
 
 func runSQL(dbName, sql string) error {
 	cmd := exec.Command(RUN_SQL_SCRIPT_PATH, dbName, sql)
+	return cmd.Run()
 }
